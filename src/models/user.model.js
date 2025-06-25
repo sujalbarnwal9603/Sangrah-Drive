@@ -16,11 +16,6 @@ const userSchema = new Schema({
     },
     avatar:{
         type: String, // Cloudinary URL
-        required: false,
-    },
-    isFavorite:{
-        type: Boolean,
-        default: false,
     },
     password:{
         type: String,

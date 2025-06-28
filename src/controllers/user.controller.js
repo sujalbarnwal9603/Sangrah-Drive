@@ -167,9 +167,96 @@ const refreshAccessToken=asyncHandler(async(req,res)=>{
             .cookie("accessToken",accessToken,options)
             .cookie("refreshToken",newrefreshToken,options)
             .json(new ApiResponse(200,{accessToken,newrefreshToken},"Access Token refreshed"))
+            
     } catch (error) {
         throw new ApiError(400,error?.message||"Invalid refresh Token")
     }
+
+})
+
+const changeCurrentPassword=asyncHandler(async(req,res)=>{
+    const {newPassword, oldPassword}=req.body;
+
+    if([newPassword,oldPassword].some(
+        (field)=>field.trim()===""
+    )){
+        throw new ApiError(400,"All fields are required")
+    }
+
+    const user= await User.findById(req.user?._id)
+
+    if(!user){
+        throw new ApiError(400,"User not found");
+    }
+
+    const isPasswordCorrect=await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(400,"Password is incorrect")
+    }
+
+    user.password=newPassword
+    await user.save({validateBeforeSave:false})
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,{},"Password Changed Successfully"))
+})
+
+const getCurrentUser=asyncHandler(async(req,res)=>{
+    return res
+        .status(200)
+        .json(new ApiResponse(200,req.user,"Current user fetched successfully"))
+})
+
+const updateName=asyncHandler(async(req,res)=>{
+    const {fullName}=req.body;
+
+    if(!fullName){
+        throw new ApiError("All fields are required");
+    }
+
+    const user=await User.findById(req.user?._id)
+
+    if(!user){
+        throw new ApiError(400,"User not found")
+    }
+
+    user.fullName=fullName
+    await user.save({validateBeforeSave:false})
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,{},"Details has been activated"))
+
+})
+
+const updateUserAvatar=asyncHandler(async(req,res)=>{
+    const avatarLocalPath=req.files?.path
+
+    if(!avatarLocalPath){
+        throw new ApiError(400,"Avatar file is missing");
+    }
+
+    const avatar=await uploadOnCloudinary(avatarLocalPath);
+
+    if(!avatar.url){
+        throw new ApiError(400,"Error while uploading")
+    }
+
+    const user=await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{
+                avatar:avatar.url
+            }
+        },
+        {new:true}.select("-password")
+    )
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,avatar,"Avatar Updated successfully"))
 
 })
 
@@ -178,5 +265,9 @@ export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser,
+    updateName,
+    updateUserAvatar
 }

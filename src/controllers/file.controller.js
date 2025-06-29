@@ -1,0 +1,173 @@
+import { File } from "../models/file.model";
+import asyncHandler from "../utils/asyncHandler";
+import ApiError from "../utils/ApiError";
+import ApiResponse from "../utils/ApiResponse";
+import { uploadOnCloudinary,deleteOnCloudinary } from "../utils/cloudinary";
+import { isValidObjectId } from "mongoose";
+
+const uploadFile=asyncHandler(async(req,res)=>{
+    const {isFavorite} =req.body;
+
+    const filesArray= req.files?.file
+
+    if(!filesArray || filesArray.length===0){
+        throw new ApiError(400,"No files uploaded");
+    }
+
+    const uploadedFiles=[];
+
+    for(let i=0;i<filesArray.length;i++){
+        const fileLocalPath=filesArray[i]?.fileLocalPath
+
+        if(!fileLocalPath){
+            continue; // Skip if no local path is provided
+        }
+
+        const Files=await uploadOnCloudinary(fileLocalPath);
+
+        if(!Files){
+            throw new ApiError(400,"File is required");
+        }
+
+        const fileUpload=await File.create({
+            isFavorite:isFavorite || false,
+            file: Files.url,
+            path: Files.public_id,
+            type: filesArray[i]?.mimetype,
+            size: filesArray[i]?.size,
+            owner:req.user?._id
+
+        });
+
+        const FinalUpload=await File.findById(fileUpload._id)
+
+        if(FinalUpload){
+            uploadedFiles.push(FinalUpload);
+        }
+    }
+
+    if(uploadedFiles.length===0){
+        throw new ApiError(500,"Something went wrong while uploading")
+    }
+    
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,uploadedFiles,"Files Uploaded Successfully"))
+
+});
+
+const getAllFiles=asyncHandler(async(req,res)=>{
+
+    const userId=req.user?._id;
+
+    if(!userId){
+        throw new ApiError(400,"Invalid UserId");
+    }
+
+    const page=parseInt(req.query.page) || 1;
+    const limit=parseInt(req.query.limit) || 10;
+
+    const filesAggregate=File.aggregate([
+        {   $match:{
+                owner:userId,
+            }
+        },
+        {
+            $sort:{
+                createdAt:-1
+            }
+        },
+    ]);
+
+    const files=await File.aggregatePaginate(filesAggregate,{
+        page,
+        limit
+    });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,files,"Files fetched successfully"));
+
+})
+
+const getFileById=asyncHandler(async(req,res)=>{
+    const {fileId}= req.params
+
+    if(!isValidObjectId(fileId)){
+        throw new ApiError(400,"Invalid File Id");
+    }
+
+    if(!isValidObjectId(req.user?._id)){
+        throw new ApiError(400,"Invalid UserId");
+    }
+
+    const file= await File.findById(fileId);
+
+    if(!file){
+        throw new ApiError(400,"File not found");
+    }
+
+    const isOwner=file?.owner.toString()===req.user?._id.toString();
+
+    const isShared=file.sharedWith?.some((shared)=>
+        shared.user?.toString()===req.user._id.toString()
+    );
+
+    if(!isOwner && !isShared){
+        throw new ApiError(400,"You are not authorized to access this file");
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,file,"File fetched successfully"));
+
+
+});
+
+const deleteFiles=asyncHandler(async(req,res)=>{
+    const {fileId}=req.params;
+
+    if(!isValidObjectId(fileId)){
+        throw new ApiError(400,"Invalid FileId");
+    }
+
+    const file=await File.findById(fileId);
+    
+    if(!file){
+        throw new ApiError(400,"Invalid file");
+    }
+
+    if(file?.owner.toString()!==req.user?._id.toString()){
+        throw new ApiError(
+            400,"Only owner can delete this file"
+        )
+    }
+
+    const fileDeleted=await File.findByIdAndDelete(file?._id);
+
+    if(!fileDeleted){
+        throw new ApiError(500,"Something went wrong Try again to delete the file")
+        
+    }
+
+    await deleteOnCloudinary(file.path);
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,fileDeleted,"File has beed deleted successfully"));
+
+})
+
+const shareFiles=asyncHandler(async(req,res)=>{
+    
+})
+
+
+export {
+    uploadFile,
+    getAllFiles,
+    getFileById,
+    deleteFiles,
+    shareFiles
+}

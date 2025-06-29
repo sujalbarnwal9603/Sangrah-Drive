@@ -1,7 +1,8 @@
 import mongoose, {Schema} from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const fileSchema= new Schema({
-    name:{
+    file:{
         type:String,
         required: true,
     },
@@ -40,5 +41,7 @@ const fileSchema= new Schema({
         }
     ],
 },{timestamps: true});
+
+fileSchema.plugin(mongooseAggregatePaginate);
 
 export const File =mongoose.model("File",fileSchema);

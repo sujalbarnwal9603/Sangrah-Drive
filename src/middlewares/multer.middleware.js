@@ -12,7 +12,7 @@ const storage=multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 300 * 1024 * 1024 }, // Optional: 300MB max per file
+  limits: { fileSize: 90 * 1024 * 1024 }, // Optional: 90MB max per file
 });
 
 export const uploadFiles = upload.fields([{ name: "file", maxCount: 10 }]);

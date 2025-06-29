@@ -23,6 +23,12 @@ const uploadFile=asyncHandler(async(req,res)=>{
             continue; // Skip if no local path is provided
         }
 
+        // Check if the file is too large (e.g., greater than 100MB)
+        if (filesArray[i]?.size > 90 * 1024 * 1024) {
+            throw new ApiError(400, "File size exceeds the limit of 90MB");
+        }
+
+
         const Files=await uploadOnCloudinary(fileLocalPath);
 
         if(!Files){

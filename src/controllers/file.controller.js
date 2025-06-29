@@ -161,12 +161,73 @@ const deleteFiles=asyncHandler(async(req,res)=>{
 
     return res
         .status(200)
-        .json(new ApiResponse(200,fileDeleted,"File has beed deleted successfully"));
+        .json(new ApiResponse(200, fileDeleted, "File has been deleted successfully"));
+
 
 })
 
 const shareFiles=asyncHandler(async(req,res)=>{
+    const {fileId}=req.params;
+    const {targetUserId,permission}=req.body;
+
+    if(!isValidObjectId(fileId) || !isValidObjectId(targetUserId)){
+        throw new ApiError(400,"Invalid FileId or targetId");
+    }
+
+    const file=await File.findById(fileId);
+
+    if(!file){
+        throw new ApiError(400,"File not found");
+    }
+
+    if(file?.owner.toString()!==req.user?._id.toString()){
+        throw new ApiError(400,"Only owner can share this file");
+    }
+
+    const isAlreadyShared=file.sharedWith.find(
+        (share)=>share.user.toString()===targetUserId
+    );
+
+    if(isAlreadyShared){
+        throw new ApiError(400,"File is already shared with this user");
+    }
+
+    file.sharedWith.push({
+        user:targetUserId,
+        permission:permission || "read"
+    });
     
+    await file.save();
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,file,"File shared successfully"));
+
+})
+
+const getSharedFiles=asyncHandler(async(req,res)=>{
+    const sharedFiles=await File.find({
+        "sharedWith.user": req.user?._id
+    }).sort({createdAt:-1});
+
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,sharedFiles,"Shared files fetched successfully"));
+})
+
+const getFavoriteFiles=asyncHandler(async(req,res)=>{
+    const favoriteFiles=await File.find({
+        "isFavorite": true,
+        $or:[
+            {owner: req.user?._id},
+            {"sharedWith.user": req.user?._id}
+        ]
+    }).sort({createdAt:-1});
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200,favoriteFiles,"Favorite files fetched successfully"));
 })
 
 
@@ -175,5 +236,7 @@ export {
     getAllFiles,
     getFileById,
     deleteFiles,
-    shareFiles
+    shareFiles,
+    getSharedFiles,
+    getFavoriteFiles
 }

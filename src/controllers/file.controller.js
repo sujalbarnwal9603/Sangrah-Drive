@@ -16,7 +16,7 @@ const uploadFile = asyncHandler(async (req, res) => {
     const uploadedFiles = [];
 
     for (let i = 0; i < filesArray.length; i++) {
-        const fileLocalPath = filesArray[i]?.fileLocalPath;
+        const fileLocalPath = filesArray[i]?.path;
 
         if (!fileLocalPath) continue;
 

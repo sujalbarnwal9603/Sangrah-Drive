@@ -15,7 +15,7 @@ const generateAccessAndRefreshTokens=async(userId)=>{
 
        return {accessToken, refreshToken}
     } catch (error) {
-        throw new ApiError(500,"Something went wrong while genrating refresh or access token")
+        throw new ApiError(500,"Something went wrong while genrating tokens")
     }
 }
 
@@ -37,7 +37,7 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "User already exist");
     }
 
-    const avatarLocalPath = req.files.avatar[0]?.path;
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
 
     
 
@@ -47,7 +47,7 @@ const registerUser = asyncHandler(async (req, res) => {
         fullName,
         
 
-        avatar: avatar.url||"",
+        avatar: avatar?.url||"",
         password,
         email
     })
@@ -113,7 +113,7 @@ const logoutUser=asyncHandler(async(req,res)=>{
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set:{
+            $unset:{
                 refreshToken:undefined
             }
         },
@@ -213,7 +213,7 @@ const updateName=asyncHandler(async(req,res)=>{
     const {fullName}=req.body;
 
     if(!fullName){
-        throw new ApiError("All fields are required");
+        throw new ApiError(400,"All fields are required");
     }
 
     const user=await User.findById(req.user?._id)
@@ -232,7 +232,8 @@ const updateName=asyncHandler(async(req,res)=>{
 })
 
 const updateUserAvatar=asyncHandler(async(req,res)=>{
-    const avatarLocalPath=req.files?.path
+
+    const avatarLocalPath=req.files?.avatar?.[0]?.path
 
     if(!avatarLocalPath){
         throw new ApiError(400,"Avatar file is missing");
@@ -251,12 +252,12 @@ const updateUserAvatar=asyncHandler(async(req,res)=>{
                 avatar:avatar.url
             }
         },
-        {new:true}.select("-password")
-    )
+        {new:true}
+    ).select("-password")
 
     return res
         .status(200)
-        .json(new ApiResponse(200,avatar,"Avatar Updated successfully"))
+        .json(new ApiResponse(200,user,"Avatar Updated successfully"))
 
 })
 

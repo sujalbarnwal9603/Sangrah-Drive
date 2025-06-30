@@ -40,4 +40,9 @@ router.route("/shared/files").get(verifyJWT, getSharedFiles)
 // Get favorite files (owned/shared)
 router.route("/favorites").get(verifyJWT, getFavoriteFiles);
 
+// for Downloading
+router.route("/download/:fileId").get(verifyJWT, downloadFile)
+
+
+
 export default router;

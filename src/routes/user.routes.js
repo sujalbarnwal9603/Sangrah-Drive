@@ -30,5 +30,21 @@ router.route("/login").post(loginUser)
 router.route("/logout").post(verifyJWT,logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
 
+// protected routes(require login)
+
+router.route("/logout").post(verifyJWT, logoutUser);
+
+router.route("/change-password").post(verifyJWT, changeCurrentPassword)
+
+router.route("/me").get(verifyJWT, getCurrentUser)
+
+router.route("/update-name").patch(verifyJWT,updateName)
+
+router.route("/update-avatar").patch(
+    verifyJWT,
+    upload.fields([{name:"avatar", maxCount:1}]),
+    updateUserAvatar
+)
+
 
 export default router;
